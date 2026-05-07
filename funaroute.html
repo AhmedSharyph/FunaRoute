@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>FunaTrace Navigator</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+html, body {
+    margin: 0;
+    height: 100%;
+}
+
+#map {
+    width: 100%;
+    height: calc(100vh - 200px);
+}
+</style>
+</head>
+
+<body class="bg-gray-100">
+
+<!-- Header -->
+<header class="bg-blue-600 text-white p-4 shadow-lg text-center">
+
+    <h1 class="text-xl font-bold">
+        📍 FunaTrace Navigator
+    </h1>
+
+    <p class="text-sm opacity-90">
+        Sh. Funadhoo Smart Navigation
+    </p>
+
+</header>
+
+<!-- Controls -->
+<div class="bg-white p-4 shadow space-y-3">
+
+    <!-- Destination -->
+    <select id="houseSelect"
+    class="w-full border border-gray-300 p-3 rounded-xl">
+
+        <option value="">
+            -- Select Destination --
+        </option>
+
+    </select>
+
+    <!-- Buttons -->
+    <div class="grid grid-cols-2 gap-3">
+
+        <button onclick="getLocation()"
+        class="bg-blue-600 text-white p-3 rounded-xl font-semibold">
+
+            📍 My Location
+
+        </button>
+
+        <button onclick="toggleSatellite()"
+        class="bg-gray-800 text-white p-3 rounded-xl font-semibold">
+
+            🛰️ Satellite
+
+        </button>
+
+    </div>
+
+    <!-- Info -->
+    <div id="info"
+    class="bg-gray-100 rounded-xl p-3 text-sm text-gray-700">
+
+        Loading Google Maps...
+
+    </div>
+
+</div>
+
+<!-- Map -->
+<div id="map"></div>
+
+<script>
+
+const APP_SCRIPT_URL =
+"https://script.google.com/macros/s/AKfycbyhRr9x4C1NjL9PHoaVgcgUL9B5BbWeUmOputZHgULM46bmO9LWlsh0zYPzSNG76vwm9g/exec";
+
+let map;
+let directionsService;
+let directionsRenderer;
+let userLocation = null;
+let userMarker = null;
+let destinationMarker = null;
+let satelliteEnabled = true;
+
+// Houses
+const houses = [
+
+{name:"Maafolheyge", lat:6.151617219632103, lng:73.28952670775449},
+
+{name:"Malas", lat:6.152929873362177, lng:73.28939657864927},
+
+{name:"Gulshan", lat:6.154929429854813, lng:73.28872306036415},
+
+{name:"Vaijeheyge", lat:6.153147495719548, lng:73.28853916184097},
+
+{name:"Maaolhu", lat:6.15201080390234, lng:73.28894463956169},
+
+{name:"Kurikeelage", lat:6.151088944081502, lng:73.28896133726448},
+
+{name:"Feeroazuge", lat:6.150456919931062, lng:73.28891331235067},
+
+{name:"Vilu", lat:6.14392570903557, lng:73.29086765615183},
+
+{name:"Even", lat:6.142170500493604, lng:73.29150036111825},
+
+{name:"Aavehi", lat:6.148863510016758, lng:73.29115014730162}
+
+];
+
+// Load Google Maps dynamically
+async function loadGoogleMaps() {
+
+    try {
+
+        const response =
+            await fetch(APP_SCRIPT_URL);
+
+        const data =
+            await response.json();
+
+        const script =
+            document.createElement("script");
+
+        script.src =
+`https://maps.googleapis.com/maps/api/js?key=${data.key}&libraries=places&callback=initMap`;
+
+        script.async = true;
+        script.defer = true;
+
+        document.head.appendChild(script);
+
+    } catch (err) {
+
+        console.error(err);
+
+        document.getElementById("info")
+        .innerHTML =
+        "Failed to load Google Maps.";
+
+    }
+}
+
+// Initialize map
+function initMap() {
+
+    map = new google.maps.Map(
+        document.getElementById("map"),
+        {
+            center: {
+                lat: 6.15,
+                lng: 73.29
+            },
+
+            zoom: 15,
+
+            mapTypeId: "hybrid",
+
+            fullscreenControl: false,
+
+            streetViewControl: false
+        }
+    );
+
+    directionsService =
+        new google.maps.DirectionsService();
+
+    directionsRenderer =
+        new google.maps.DirectionsRenderer({
+
+            suppressMarkers: true,
+
+            polylineOptions: {
+                strokeColor: "#2563eb",
+                strokeWeight: 6
+            }
+
+        });
+
+    directionsRenderer.setMap(map);
+
+    populateDropdown();
+
+    document.getElementById("info")
+    .innerHTML =
+    "Google Maps loaded ✔";
+}
+
+// Populate dropdown
+function populateDropdown() {
+
+    const select =
+    document.getElementById("houseSelect");
+
+    houses.forEach((house, index) => {
+
+        const option =
+        document.createElement("option");
+
+        option.value = index;
+
+        option.textContent =
+        house.name;
+
+        select.appendChild(option);
+
+    });
+
+    select.addEventListener(
+        "change",
+        drawRoute
+    );
+}
+
+// Get current location
+function getLocation() {
+
+    if (!navigator.geolocation) {
+
+        alert("Geolocation not supported");
+
+        return;
+    }
+
+    document.getElementById("info")
+    .innerHTML =
+    "Detecting your location...";
+
+    navigator.geolocation.getCurrentPosition(
+
+        position => {
+
+            userLocation = {
+
+                lat:
+                position.coords.latitude,
+
+                lng:
+                position.coords.longitude
+            };
+
+            if (userMarker) {
+                userMarker.setMap(null);
+            }
+
+            userMarker =
+            new google.maps.Marker({
+
+                position: userLocation,
+
+                map: map,
+
+                label: "You"
+
+            });
+
+            map.setCenter(userLocation);
+
+            document.getElementById("info")
+            .innerHTML =
+            "Location detected ✔";
+
+            drawRoute();
+
+        },
+
+        error => {
+
+            console.error(error);
+
+            alert("Location permission denied.");
+
+        },
+
+        {
+            enableHighAccuracy: true
+        }
+    );
+}
+
+// Draw route
+function drawRoute() {
+
+    const selected =
+    document.getElementById(
+        "houseSelect"
+    ).value;
+
+    if (
+        selected === ""
+        || !userLocation
+    ) return;
+
+    const destination =
+    houses[selected];
+
+    if (destinationMarker) {
+        destinationMarker.setMap(null);
+    }
+
+    destinationMarker =
+    new google.maps.Marker({
+
+        position: destination,
+
+        map: map,
+
+        title: destination.name
+
+    });
+
+    directionsService.route({
+
+        origin: userLocation,
+
+        destination: {
+            lat: destination.lat,
+            lng: destination.lng
+        },
+
+        travelMode:
+        google.maps.TravelMode.WALKING
+
+    },
+
+    (result, status) => {
+
+        if (status === "OK") {
+
+            directionsRenderer
+            .setDirections(result);
+
+            const leg =
+            result.routes[0].legs[0];
+
+            document.getElementById("info")
+            .innerHTML =
+            `
+            <strong>${destination.name}</strong><br>
+            Distance: ${leg.distance.text}<br>
+            Duration: ${leg.duration.text}
+            `;
+
+        } else {
+
+            console.error(status);
+
+            alert(
+                "Route failed: "
+                + status
+            );
+
+        }
+
+    });
+}
+
+// Toggle map type
+function toggleSatellite() {
+
+    satelliteEnabled =
+    !satelliteEnabled;
+
+    map.setMapTypeId(
+
+        satelliteEnabled
+        ? "hybrid"
+        : "roadmap"
+
+    );
+}
+
+// Start
+loadGoogleMaps();
+
+</script>
+
+</body>
+</html>
