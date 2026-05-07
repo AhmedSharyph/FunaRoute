@@ -2,84 +2,49 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <title>FunaTrace PWA</title>
-
-<link rel="manifest" href="manifest.json">
 
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
-html, body {
-    margin: 0;
-    height: 100%;
-    font-family: Arial, sans-serif;
-    -webkit-tap-highlight-color: transparent;
-}
-
-#mapFrame {
-    width: 100%;
-    height: calc(100vh - 220px);
-    border: none;
-}
-
-@media (min-width: 768px) {
-    #mapFrame {
-        height: calc(100vh - 180px);
-    }
-}
+html, body { margin:0; height:100%; font-family: Arial; }
+#mapFrame { width:100%; height: calc(100vh - 200px); border:0; }
 </style>
 </head>
 
 <body class="bg-gray-100">
 
-<!-- HEADER -->
-<header class="bg-blue-600 text-white text-center p-4 shadow">
-    <h1 class="text-xl font-bold">📍 FunaTrace</h1>
-    <p class="text-xs opacity-90">PWA Smart Navigation</p>
+<header class="bg-blue-600 text-white p-4 text-center">
+    <h1 class="text-lg font-bold">📍 FunaTrace</h1>
 </header>
 
-<!-- CONTROLS -->
-<div class="bg-white p-4 space-y-3 shadow">
+<div class="p-4 bg-white space-y-3">
 
-    <select id="houseSelect"
-    class="w-full border p-3 rounded-xl text-base">
+<select id="houseSelect" class="w-full p-3 border rounded-xl">
+<option value="">-- Select House --</option>
+</select>
 
-        <option value="">-- Select House --</option>
+<button onclick="getLocation()"
+class="w-full bg-blue-600 text-white p-3 rounded-xl">
+📍 My Location
+</button>
 
-    </select>
-
-    <div class="grid grid-cols-2 gap-3">
-
-        <button onclick="getLocation()"
-        class="bg-blue-600 text-white p-3 rounded-xl font-semibold">
-        📍 My Location
-        </button>
-
-        <button onclick="toggleMode()"
-        class="bg-gray-800 text-white p-3 rounded-xl font-semibold">
-        🛰️ Mode
-        </button>
-
-    </div>
-
-    <div id="info"
-    class="bg-gray-100 p-3 rounded-xl text-sm text-gray-700">
-        Ready
-    </div>
+<div id="info" class="text-sm bg-gray-100 p-3 rounded-xl">
+Loading...
+</div>
 
 </div>
 
-<!-- MAP -->
-<iframe id="mapFrame" loading="lazy"></iframe>
+<iframe id="mapFrame"></iframe>
 
 <script>
 
-let userLocation = null;
-let satellite = true;
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx-6SZCJZROkTKqOuFkFPXMTUH_IGeRzalgMJUZCvcoNpfl4XIcwM7WdBZNkNDW7QqR0Q/exec";
 
-const API_KEY = "YOUR_API_KEY_HERE";
+let API_KEY = "";
+let userLocation = null;
 
 const houses = [
 {name:"Maafolheyge", lat:6.151617219632103, lng:73.28952670775449},
@@ -94,14 +59,27 @@ const houses = [
 {name:"Aavehi", lat:6.148863510016758, lng:73.29115014730162}
 ];
 
+// load API key
+async function loadKey() {
+
+    const res = await fetch(SCRIPT_URL);
+    const data = await res.json();
+
+    API_KEY = data.key;
+
+    document.getElementById("info").innerText =
+    "Ready ✔";
+
+}
+
 // dropdown
 const select = document.getElementById("houseSelect");
 
-houses.forEach((h, i) => {
-    let opt = document.createElement("option");
-    opt.value = i;
-    opt.textContent = h.name;
-    select.appendChild(opt);
+houses.forEach((h,i)=>{
+    let o = document.createElement("option");
+    o.value=i;
+    o.textContent=h.name;
+    select.appendChild(o);
 });
 
 select.addEventListener("change", updateMap);
@@ -116,18 +94,10 @@ function getLocation() {
             lng: pos.coords.longitude
         };
 
-        document.getElementById("info").innerText =
-        "Location detected ✔";
-
         updateMap();
 
-    }, () => alert("Location denied"));
-}
+    });
 
-// toggle map type
-function toggleMode() {
-    satellite = !satellite;
-    updateMap();
 }
 
 // update map
@@ -135,32 +105,22 @@ function updateMap() {
 
     const idx = select.value;
 
-    if (!userLocation || idx === "") return;
+    if (!userLocation || idx==="") return;
 
     const dest = houses[idx];
-
-    const mapType = satellite ? "satellite" : "roadmap";
 
     const url =
 `https://www.google.com/maps/embed/v1/directions?key=${API_KEY}
 &origin=${userLocation.lat},${userLocation.lng}
 &destination=${dest.lat},${dest.lng}
-&mode=walking
-&maptype=${mapType}`;
+&mode=walking&maptype=satellite`;
 
     document.getElementById("mapFrame").src = url;
 
-    document.getElementById("info").innerHTML =
-    `Navigating to <b>${dest.name}</b>`;
 }
 
-</script>
+loadKey();
 
-<!-- PWA SERVICE WORKER -->
-<script>
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-}
 </script>
 
 </body>
