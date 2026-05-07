@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<title>FunaTrace PWA</title>
+
+<link rel="manifest" href="manifest.json">
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+html, body {
+    margin: 0;
+    height: 100%;
+    font-family: Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#mapFrame {
+    width: 100%;
+    height: calc(100vh - 220px);
+    border: none;
+}
+
+@media (min-width: 768px) {
+    #mapFrame {
+        height: calc(100vh - 180px);
+    }
+}
+</style>
+</head>
+
+<body class="bg-gray-100">
+
+<!-- HEADER -->
+<header class="bg-blue-600 text-white text-center p-4 shadow">
+    <h1 class="text-xl font-bold">📍 FunaTrace</h1>
+    <p class="text-xs opacity-90">PWA Smart Navigation</p>
+</header>
+
+<!-- CONTROLS -->
+<div class="bg-white p-4 space-y-3 shadow">
+
+    <select id="houseSelect"
+    class="w-full border p-3 rounded-xl text-base">
+
+        <option value="">-- Select House --</option>
+
+    </select>
+
+    <div class="grid grid-cols-2 gap-3">
+
+        <button onclick="getLocation()"
+        class="bg-blue-600 text-white p-3 rounded-xl font-semibold">
+        📍 My Location
+        </button>
+
+        <button onclick="toggleMode()"
+        class="bg-gray-800 text-white p-3 rounded-xl font-semibold">
+        🛰️ Mode
+        </button>
+
+    </div>
+
+    <div id="info"
+    class="bg-gray-100 p-3 rounded-xl text-sm text-gray-700">
+        Ready
+    </div>
+
+</div>
+
+<!-- MAP -->
+<iframe id="mapFrame" loading="lazy"></iframe>
+
+<script>
+
+let userLocation = null;
+let satellite = true;
+
+const API_KEY = "YOUR_API_KEY_HERE";
+
+const houses = [
+{name:"Maafolheyge", lat:6.151617219632103, lng:73.28952670775449},
+{name:"Malas", lat:6.152929873362177, lng:73.28939657864927},
+{name:"Gulshan", lat:6.154929429854813, lng:73.28872306036415},
+{name:"Vaijeheyge", lat:6.153147495719548, lng:73.28853916184097},
+{name:"Maaolhu", lat:6.15201080390234, lng:73.28894463956169},
+{name:"Kurikeelage", lat:6.151088944081502, lng:73.28896133726448},
+{name:"Feeroazuge", lat:6.150456919931062, lng:73.28891331235067},
+{name:"Vilu", lat:6.14392570903557, lng:73.29086765615183},
+{name:"Even", lat:6.142170500493604, lng:73.29150036111825},
+{name:"Aavehi", lat:6.148863510016758, lng:73.29115014730162}
+];
+
+// dropdown
+const select = document.getElementById("houseSelect");
+
+houses.forEach((h, i) => {
+    let opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = h.name;
+    select.appendChild(opt);
+});
+
+select.addEventListener("change", updateMap);
+
+// location
+function getLocation() {
+
+    navigator.geolocation.getCurrentPosition(pos => {
+
+        userLocation = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+        };
+
+        document.getElementById("info").innerText =
+        "Location detected ✔";
+
+        updateMap();
+
+    }, () => alert("Location denied"));
+}
+
+// toggle map type
+function toggleMode() {
+    satellite = !satellite;
+    updateMap();
+}
+
+// update map
+function updateMap() {
+
+    const idx = select.value;
+
+    if (!userLocation || idx === "") return;
+
+    const dest = houses[idx];
+
+    const mapType = satellite ? "satellite" : "roadmap";
+
+    const url =
+`https://www.google.com/maps/embed/v1/directions?key=${API_KEY}
+&origin=${userLocation.lat},${userLocation.lng}
+&destination=${dest.lat},${dest.lng}
+&mode=walking
+&maptype=${mapType}`;
+
+    document.getElementById("mapFrame").src = url;
+
+    document.getElementById("info").innerHTML =
+    `Navigating to <b>${dest.name}</b>`;
+}
+
+</script>
+
+<!-- PWA SERVICE WORKER -->
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+}
+</script>
+
+</body>
+</html>
